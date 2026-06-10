@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { BwsSecret } from "@/lib/bws";
 import dynamic from "next/dynamic";
+import { tokenHeaders } from "@/lib/client-token";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
@@ -48,7 +49,7 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
       }
       const res = await fetch(`/api/secrets/${secret.id}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json", "x-bws-token": token },
+        headers: { "content-type": "application/json", ...tokenHeaders(token) },
         body: JSON.stringify({ value: valueToSave }),
       });
       if (!res.ok) {

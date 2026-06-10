@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BwsProject, BwsSecret } from "@/lib/bws";
+import { tokenHeaders } from "@/lib/client-token";
 import TokenGate from "@/components/TokenGate";
 import ProjectTree from "@/components/ProjectTree";
 import SecretList from "@/components/SecretList";
@@ -30,7 +31,7 @@ export default function Home() {
     setLoadingProjects(true);
     setGlobalError(null);
     try {
-      const res = await fetch("/api/projects", { headers: { "x-bws-token": t } });
+      const res = await fetch("/api/projects", { headers: tokenHeaders(t) });
       if (!res.ok) throw new Error((await res.json()).error ?? res.statusText);
       setProjects(await res.json());
     } catch (e: unknown) {
@@ -53,7 +54,7 @@ export default function Home() {
     setSelectedSecret(null);
     try {
       const url = projectId ? `/api/secrets?projectId=${projectId}` : "/api/secrets";
-      const res = await fetch(url, { headers: { "x-bws-token": t } });
+      const res = await fetch(url, { headers: tokenHeaders(t) });
       if (!res.ok) throw new Error((await res.json()).error ?? res.statusText);
       const data: BwsSecret[] = await res.json();
       secretCache.current.set(cacheKey, data);
