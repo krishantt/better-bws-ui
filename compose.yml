@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: ghcr.io/krishantt/better-bws-ui:latest
     restart: always
     ports:
       - "3000:3000"
