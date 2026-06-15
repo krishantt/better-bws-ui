@@ -21,7 +21,7 @@ RUN pnpm build
 
 # ---- runner ----
 FROM node:26-alpine AS runner
-COPY --from=bws-cli /usr/local/bin/bws /usr/local/bin/bws
+COPY --from=bws-cli /bin/bws /usr/local/bin/bws
 RUN npm install -g corepack@latest && corepack enable
 WORKDIR /app
 ENV NODE_ENV=production
