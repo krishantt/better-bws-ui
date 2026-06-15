@@ -15,6 +15,7 @@ export default function Home() {
   // null = not authed, "env" = using server env token, string = user-provided token
   const [token, setToken] = useState<string | null>(null);
   const [envTokenChecked, setEnvTokenChecked] = useState(false);
+  const [envProjectId, setEnvProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<BwsProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedSecret, setSelectedSecret] = useState<BwsSecret | null>(null);
@@ -66,12 +67,15 @@ export default function Home() {
     }
   }, []);
 
-  // Check if server has BWS_ACCESS_TOKEN set; auto-connect if so.
+  // Check if server has BWS_ACCESS_TOKEN / BWS_PROJECT_ID set; auto-connect if so.
   useEffect(() => {
-    fetch("/api/env-token")
-      .then((r) => r.json())
-      .then(({ hasToken }) => {
+    Promise.all([
+      fetch("/api/env-token").then((r) => r.json()),
+      fetch("/api/env-project").then((r) => r.json()),
+    ])
+      .then(([{ hasToken }, { projectId }]) => {
         if (hasToken) setToken("env");
+        if (projectId) setEnvProjectId(projectId);
       })
       .catch(() => {})
       .finally(() => setEnvTokenChecked(true));
@@ -83,11 +87,19 @@ export default function Home() {
     fetchSecrets(token);
   }, [token, envTokenChecked, fetchProjects, fetchSecrets]);
 
-  function handleProjectSelect(id: string | null) {
+  const handleProjectSelect = useCallback((id: string | null) => {
     setSelectedProjectId(id);
     setSearch("");
     if (token) fetchSecrets(token, id ?? undefined);
-  }
+  }, [token, fetchSecrets]);
+
+  // Auto-select the env-configured project once projects are loaded.
+  useEffect(() => {
+    if (!envProjectId || selectedProjectId !== null || projects.length === 0 || !token) return;
+    if (projects.some((p) => p.id === envProjectId)) {
+      handleProjectSelect(envProjectId);
+    }
+  }, [projects, envProjectId, selectedProjectId, token, handleProjectSelect]);
 
   function handleSecretSaved(updated: BwsSecret) {
     // Update every cache bucket that contains this secret.
