@@ -25,6 +25,8 @@ export default function Home() {
 
   // Per-project secret cache: key → BwsSecret[]
   const secretCache = useRef<Map<string, BwsSecret[]>>(new Map());
+  const cacheTimestamps = useRef<Map<string, number>>(new Map());
+  const CACHE_TTL = 60_000;
   const [displayedSecrets, setDisplayedSecrets] = useState<BwsSecret[]>([]);
 
   const fetchProjects = useCallback(async (t: string) => {
@@ -44,8 +46,9 @@ export default function Home() {
   const fetchSecrets = useCallback(async (t: string, projectId?: string) => {
     const cacheKey = projectId ?? ALL_KEY;
 
+    const ts = cacheTimestamps.current.get(cacheKey);
     const cached = secretCache.current.get(cacheKey);
-    if (cached) {
+    if (cached && ts !== undefined && Date.now() - ts < CACHE_TTL) {
       setDisplayedSecrets(cached);
       return;
     }
@@ -58,6 +61,7 @@ export default function Home() {
       if (!res.ok) throw new Error((await res.json()).error ?? res.statusText);
       const data: BwsSecret[] = await res.json();
       secretCache.current.set(cacheKey, data);
+      cacheTimestamps.current.set(cacheKey, Date.now());
       setDisplayedSecrets(data);
     } catch (e: unknown) {
       setGlobalError(e instanceof Error ? e.message : String(e));
@@ -109,6 +113,7 @@ export default function Home() {
     setDisplayedSecrets([]);
     setSelectedSecret(null);
     secretCache.current.clear();
+    cacheTimestamps.current.clear();
   }
 
   if (!envTokenChecked) return null; // wait for env check before showing anything
