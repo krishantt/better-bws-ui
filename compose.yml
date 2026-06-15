@@ -6,7 +6,6 @@ services:
       - "3000:3000"
     environment:
       - BWS_ACCESS_TOKEN=${BWS_ACCESS_TOKEN}
-      - BWS_PROJECT_ID=${BWS_PROJECT_ID}
     # Mount the host Docker socket so the app can run `docker run ghcr.io/bitwarden/bws`
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
