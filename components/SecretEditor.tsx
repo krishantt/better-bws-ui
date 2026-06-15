@@ -43,10 +43,8 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
     setSaving(true);
     setError(null);
     try {
-      let valueToSave = editorValue;
-      if (isJson) {
-        valueToSave = JSON.stringify(JSON.parse(editorValue), null, 2);
-      }
+      // Re-derive from the current editor content, not the initial render's snapshot.
+      const { text: valueToSave } = tryFormat(editorValue);
       const res = await fetch(`/api/secrets/${secret.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json", ...tokenHeaders(token) },
