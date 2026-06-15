@@ -1,6 +1,9 @@
 FROM node:26-alpine AS base
 RUN npm install -g corepack@latest && corepack enable
 
+# Pull the bws binary from the official image so the runner never needs Docker.
+FROM ghcr.io/bitwarden/bws AS bws-cli
+
 # ---- deps ----
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
@@ -18,7 +21,7 @@ RUN pnpm build
 
 # ---- runner ----
 FROM node:26-alpine AS runner
-RUN apk add --no-cache docker-cli
+COPY --from=bws-cli /usr/local/bin/bws /usr/local/bin/bws
 RUN npm install -g corepack@latest && corepack enable
 WORKDIR /app
 ENV NODE_ENV=production

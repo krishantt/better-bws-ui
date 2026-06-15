@@ -35,19 +35,14 @@ function runBws(args: string[], token: string): Promise<string> {
 
   return new Promise((resolve, reject) => {
     execFile(
-      "docker",
-      [
-        "run", "--rm",
-        "--mount", "type=tmpfs,destination=/root/.config",
-        "-e", "BWS_ACCESS_TOKEN",
-        "ghcr.io/bitwarden/bws",
-        ...args,
-        "--output", "json",
-      ],
+      "bws",
+      [...args, "--output", "json"],
       {
         encoding: "utf-8",
         timeout: 30000,
-        env: { ...process.env, BWS_ACCESS_TOKEN: token },
+        // HOME=/tmp prevents bws from reading/writing cached auth state
+        // across requests — keeps each call stateless.
+        env: { ...process.env, BWS_ACCESS_TOKEN: token, HOME: "/tmp" },
       },
       (error, stdout, stderr) => {
         console.log("[bws]", sanitized.join(" "), "|", error ? `FAILED (${error.code ?? error.message})` : "OK");
