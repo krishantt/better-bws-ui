@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAuth } from "@/lib/bws";
+import { listProjects } from "@/lib/bws";
 import { resolveToken } from "@/lib/token";
 
 export async function POST(req: NextRequest) {
+  let token: string;
   try {
-    const token = resolveToken(req);
-    checkAuth(token);
+    token = resolveToken(req);
+  } catch {
+    return NextResponse.json({ error: "Missing or invalid token" }, { status: 401 });
+  }
+  try {
+    await listProjects(token);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 401 });
+    const status = /unauthorized|invalid|access.denied/i.test(msg) ? 401 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
   const projectId = req.nextUrl.searchParams.get("projectId") ?? undefined;
   try {
-    const secrets = listSecrets(token, projectId);
+    const secrets = await listSecrets(token, projectId);
     return NextResponse.json(secrets);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

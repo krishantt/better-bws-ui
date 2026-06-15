@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
   const { id } = await params;
   try {
-    const secret = getSecret(token, id);
+    const secret = await getSecret(token, id);
     return NextResponse.json(secret);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -29,7 +29,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   try {
     const body = await req.json();
-    const updated = updateSecret(token, id, body.value, body.key, body.note);
+    if (typeof body.value !== "string") {
+      return NextResponse.json({ error: "value is required" }, { status: 400 });
+    }
+    const updated = await updateSecret(token, id, body.value, body.key, body.note);
     return NextResponse.json(updated);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

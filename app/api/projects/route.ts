@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing or invalid token" }, { status: 401 });
   }
   try {
-    const projects = listProjects(token);
+    const projects = await listProjects(token);
     return NextResponse.json(projects);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

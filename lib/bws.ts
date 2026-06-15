@@ -1,4 +1,4 @@
-import { spawnSync } from "child_process";
+import { execFile } from "child_process";
 
 export interface BwsProject {
   id: string;
@@ -28,66 +28,72 @@ export function validateToken(token: unknown): string {
   return token;
 }
 
-function runBws(args: string[], token: string): string {
-  const result = spawnSync(
-    "docker",
-    ["run", "--rm", "--mount", "type=tmpfs,destination=/root/.config", "-e", "BWS_ACCESS_TOKEN", "ghcr.io/bitwarden/bws", ...args, "--output", "json"],
-    {
-      encoding: "utf-8",
-      timeout: 30000,
-      // Token is passed via env, never interpolated into the command string.
-      env: { ...process.env, BWS_ACCESS_TOKEN: token },
-    }
+function runBws(args: string[], token: string): Promise<string> {
+  const sanitized = args.map((a, i) =>
+    i > 0 && ["--value", "--note"].includes(args[i - 1]) ? "[redacted]" : a
   );
 
-  if (result.error) throw result.error;
+  return new Promise((resolve, reject) => {
+    execFile(
+      "docker",
+      [
+        "run", "--rm",
+        "--mount", "type=tmpfs,destination=/root/.config",
+        "-e", "BWS_ACCESS_TOKEN",
+        "ghcr.io/bitwarden/bws",
+        ...args,
+        "--output", "json",
+      ],
+      {
+        encoding: "utf-8",
+        timeout: 30000,
+        env: { ...process.env, BWS_ACCESS_TOKEN: token },
+      },
+      (error, stdout, stderr) => {
+        console.log("[bws]", sanitized.join(" "), "|", error ? `FAILED (${error.code ?? error.message})` : "OK");
+        if (stderr) console.log("[bws stderr]\n", stderr);
 
-  const stdout = result.stdout ?? "";
-  const stderr = result.stderr ?? "";
+        if (error) {
+          const errLines = (stderr ?? "").split("\n").filter(Boolean);
+          const specific = errLines.find((l) => /error|invalid|unauthorized/i.test(l));
+          reject(new Error(specific || (stderr ?? "").trim() || (stdout ?? "").trim() || error.message));
+          return;
+        }
 
-  console.log("[bws]", "args:", args, "| status:", result.status);
-  if (stderr) console.log("[bws stderr]\n", stderr);
-
-  if (result.status !== 0) {
-    const errLines = stderr.split("\n").filter(Boolean);
-    const specific = errLines.find((l) => /error|invalid|unauthorized/i.test(l));
-    throw new Error(specific || stderr.trim() || stdout.trim());
-  }
-
-  // BWS may print warning lines before the JSON on stdout — skip to first { or [.
-  const lines = stdout.split("\n");
-  const start = lines.findIndex((l) => /^\s*[{\[]/.test(l));
-  if (start === -1) throw new Error(stderr.trim() || stdout.trim() || "No output from bws");
-  return lines.slice(start).join("\n");
+        const lines = (stdout ?? "").split("\n");
+        const start = lines.findIndex((l) => /^\s*[{\[]/.test(l));
+        if (start === -1) {
+          reject(new Error((stderr ?? "").trim() || (stdout ?? "").trim() || "No output from bws"));
+          return;
+        }
+        resolve(lines.slice(start).join("\n"));
+      }
+    );
+  });
 }
 
-export function checkAuth(token: string): void {
-  // Runs the cheapest read command; throws on bad token / network error.
-  runBws(["project", "list"], token);
+export async function listProjects(token: string): Promise<BwsProject[]> {
+  return JSON.parse(await runBws(["project", "list"], token));
 }
 
-export function listProjects(token: string): BwsProject[] {
-  return JSON.parse(runBws(["project", "list"], token));
-}
-
-export function listSecrets(token: string, projectId?: string): BwsSecret[] {
+export async function listSecrets(token: string, projectId?: string): Promise<BwsSecret[]> {
   const args = projectId ? ["secret", "list", projectId] : ["secret", "list"];
-  return JSON.parse(runBws(args, token));
+  return JSON.parse(await runBws(args, token));
 }
 
-export function getSecret(token: string, id: string): BwsSecret {
-  return JSON.parse(runBws(["secret", "get", id], token));
+export async function getSecret(token: string, id: string): Promise<BwsSecret> {
+  return JSON.parse(await runBws(["secret", "get", id], token));
 }
 
-export function updateSecret(
+export async function updateSecret(
   token: string,
   id: string,
   value: string,
   key?: string,
   note?: string
-): BwsSecret {
+): Promise<BwsSecret> {
   const args = ["secret", "edit", id, "--value", value];
-  if (key) args.push("--key", key);
+  if (key !== undefined) args.push("--key", key);
   if (note !== undefined) args.push("--note", note);
-  return JSON.parse(runBws(args, token));
+  return JSON.parse(await runBws(args, token));
 }
