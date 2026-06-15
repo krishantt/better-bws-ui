@@ -65,7 +65,7 @@ export default function SecretList({ secrets, selectedId, onSelect, loading, sea
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium">{s.key}</p>
                 <p className="mt-0.5 truncate text-xs opacity-50">
-                  {isJson(s.value) ? "{ JSON }" : s.value.slice(0, 30) + (s.value.length > 30 ? "…" : "")}
+                  {isJson(s.value) ? "{ JSON }" : "••••••••"}
                 </p>
               </div>
             </button>
