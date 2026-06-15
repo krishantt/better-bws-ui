@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { BwsSecret } from "@/lib/bws";
+import { formatValue, FORMAT_BADGE_CLASS, FORMAT_LABEL, FORMAT_MONACO_LANGUAGE } from "@/lib/format";
 import dynamic from "next/dynamic";
 import { tokenHeaders } from "@/lib/client-token";
 
@@ -13,16 +14,8 @@ interface Props {
   onSaved: (updated: BwsSecret) => void;
 }
 
-function tryFormat(value: string): { text: string; isJson: boolean } {
-  try {
-    return { text: JSON.stringify(JSON.parse(value), null, 2), isJson: true };
-  } catch {
-    return { text: value, isJson: false };
-  }
-}
-
 export default function SecretEditor({ secret, token, onSaved }: Props) {
-  const { text: formatted, isJson } = tryFormat(secret.value);
+  const { text: formatted, format } = formatValue(secret.value);
   const [editorValue, setEditorValue] = useState(formatted);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +23,7 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
   const originalRef = useRef(formatted);
 
   useEffect(() => {
-    const { text } = tryFormat(secret.value);
+    const { text } = formatValue(secret.value);
     setEditorValue(text);
     originalRef.current = text;
     setError(null);
@@ -43,8 +36,7 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
     setSaving(true);
     setError(null);
     try {
-      // Re-derive from the current editor content, not the initial render's snapshot.
-      const { text: valueToSave } = tryFormat(editorValue);
+      const { text: valueToSave } = formatValue(editorValue);
       const res = await fetch(`/api/secrets/${secret.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json", ...tokenHeaders(token) },
@@ -66,6 +58,8 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
     }
   }
 
+  const label = FORMAT_LABEL[format];
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
@@ -74,8 +68,10 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
           <p className="mt-0.5 text-xs text-gray-500">{secret.id}</p>
         </div>
         <div className="ml-4 flex items-center gap-2">
-          {isJson && (
-            <span className="rounded bg-emerald-900/50 px-2 py-0.5 text-xs font-medium text-emerald-400">JSON</span>
+          {label && (
+            <span className={`rounded px-2 py-0.5 text-xs font-medium ${FORMAT_BADGE_CLASS[format]}`}>
+              {label}
+            </span>
           )}
           {isDirty && !saving && (
             <span className="rounded bg-yellow-900/50 px-2 py-0.5 text-xs font-medium text-yellow-400">unsaved</span>
@@ -103,7 +99,7 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
       <div className="flex-1 overflow-hidden">
         <MonacoEditor
           height="100%"
-          language={isJson ? "json" : "plaintext"}
+          language={FORMAT_MONACO_LANGUAGE[format]}
           theme="vs-dark"
           value={editorValue}
           onChange={(v) => setEditorValue(v ?? "")}
@@ -112,7 +108,7 @@ export default function SecretEditor({ secret, token, onSaved }: Props) {
             fontSize: 13,
             lineNumbers: "on",
             scrollBeyondLastLine: false,
-            wordWrap: isJson ? "off" : "on",
+            wordWrap: format === "plaintext" ? "on" : "off",
             tabSize: 2,
             formatOnPaste: true,
             formatOnType: true,

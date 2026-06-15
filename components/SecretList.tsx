@@ -1,6 +1,7 @@
 "use client";
 
 import type { BwsSecret } from "@/lib/bws";
+import { detectFormat, FORMAT_LABEL } from "@/lib/format";
 
 interface Props {
   secrets: BwsSecret[];
@@ -9,10 +10,6 @@ interface Props {
   loading: boolean;
   search: string;
   onSearch: (v: string) => void;
-}
-
-function isJson(value: string) {
-  try { JSON.parse(value); return true; } catch { return false; }
 }
 
 export default function SecretList({ secrets, selectedId, onSelect, loading, search, onSearch }: Props) {
@@ -49,27 +46,30 @@ export default function SecretList({ secrets, selectedId, onSelect, loading, sea
             {search ? "No secrets match your search" : "No secrets in this project"}
           </p>
         ) : (
-          filtered.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => onSelect(s)}
-              className={`flex w-full items-start gap-2 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                selectedId === s.id
-                  ? "bg-blue-600/20 text-blue-300"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-              }`}
-            >
-              <svg className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium">{s.key}</p>
-                <p className="mt-0.5 truncate text-xs opacity-50">
-                  {isJson(s.value) ? "{ JSON }" : "••••••••"}
-                </p>
-              </div>
-            </button>
-          ))
+          filtered.map((s) => {
+            const formatLabel = FORMAT_LABEL[detectFormat(s.value)];
+            return (
+              <button
+                key={s.id}
+                onClick={() => onSelect(s)}
+                className={`flex w-full items-start gap-2 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                  selectedId === s.id
+                    ? "bg-blue-600/20 text-blue-300"
+                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                }`}
+              >
+                <svg className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium">{s.key}</p>
+                  <p className="mt-0.5 truncate text-xs opacity-50">
+                    {formatLabel ? `{ ${formatLabel} }` : "••••••••"}
+                  </p>
+                </div>
+              </button>
+            );
+          })
         )}
       </div>
     </div>
